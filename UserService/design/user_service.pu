@@ -1,0 +1,65 @@
+@startuml user_service
+
+participant User
+participant Browser
+
+box "UserService" #LightBlue
+participant Service
+participant DB
+end box
+
+box "OrgService" #LightCoral
+participant OrgService
+end box
+
+
+User -> Browser: enter(userName)
+activate User
+activate Browser
+Browser -> Service: lookup(userName)
+activate Service
+Service -> DB: SELECT * FROM secret \n  WHERE user-name=userName
+
+DB --> Service: Not Found/Expired(24h)
+Service -> Service: GenerateSecret
+Service -> DB: INSERT INTO secret (user-name, secret, createdAt) \n  VALUES (userName, generatedSecret, now())
+
+Service --> Browser: secret
+deactivate Service
+deactivate Browser
+
+User -> Browser: enter(password)
+activate Browser
+Browser -> Browser: credential = SHA256(SHA256(password), secret)
+Browser -> Browser: Session.save(userName, credential)
+Browser -> Service: login(userName, credential)
+activate Service
+Service -> DB: SELECT * FROM secret \n  WHERE user-name=userName
+DB --> Service: secret
+Service -> DB: SELECT * FROM user \n  WHERE user-name=userName
+DB --> Service: passwordSHA256
+Service -> Service: expected = SHA256(passwordSHA256, secret)
+alt credential == expected
+Service -> Service: INSERT INTO auth (id, user-name, secret, createdAt \n  VALUES (uuid, userName, generateSecret(), now()))
+Service --> Browser: authToken = Base64(uuid, generatedSecret)
+end
+deactivate Service
+Browser -> Browser: Set-Cookie(authToken=${authToken})
+Browser -> OrgService: getOrg(authToken)
+activate OrgService
+OrgService -> Service: auth(authToken)
+activate Service
+Service -> Service: token = Base64.decode(authToken)
+Service -> DB: SELECT * FROM auth \n  WHERE id=token.id
+DB --> Service: userName
+Service --> OrgService: userName
+deactivate Service
+OrgService -> OrgService: getOrgInfo(userName)
+OrgService --> Browser: OrgInfo
+deactivate OrgService
+Browser -> User: RenderPage()
+deactivate Browser
+deactivate User
+
+
+@enduml

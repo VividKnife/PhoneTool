@@ -1,0 +1,35 @@
+@startuml auth
+
+participant User
+participant EmployeeManageService as ems
+participant UserService
+
+User -> UserService: loopUp(user)
+activate User
+UserService --> User: secret[expiresInOneDay]
+User -> UserService: signin(user, SHA256(secret, pass))
+note over User
+result of SHA256(secret, pass) 
+can be presisted in session,
+used by refreshing the authToken.
+end note
+UserService --> User: authToken[expiresInOneHour]
+deactivate User
+
+User -> ems: getOrg(authToken)
+activate User
+activate ems
+ems -> UserService: getUser(authToken)
+
+UserService --> ems: User
+ems -> ems: loadOrg
+ems --> User: Org
+deactivate ems
+deactivate User
+
+User -> UserService: logout(user)
+UserService --> User: 202 Accepted
+UserService -> UserService: removeAuthToken
+UserService -> UserService: removeSecret
+
+@enduml
