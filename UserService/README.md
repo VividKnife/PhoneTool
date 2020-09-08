@@ -44,9 +44,17 @@ Response
 }
 ```
 
-User will be able to logout
+1. auth
+```
+POST /auth
+{
+    "authToken": "MyAuthToken"
+}
+```
 
-1. logout
-```
-POST /
-```
+
+TODO: 
+1. Wrap Repository into a Service Interface
+1. Add Redis for cache
+1. Add Unit Tests
+1. Add Integration Tests
